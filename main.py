@@ -67,13 +67,16 @@ fig, ax = plt.subplots(figsize=(8, 7))
 
 # plot trackpoints with acc data
 # ax.scatter(filtered_data.lon, filtered_data.lat, zorder=1, alpha=0.2, c='b', s=10)
-ax.scatter(lon[low_indices], lat[low_indices], zorder=1, alpha=0.5, c='g', s=10)
-ax.scatter(lon[mid_indices], lat[mid_indices], zorder=1, alpha=0.5, c='y', s=10)
-ax.scatter(lon[high_indices], lat[high_indices], zorder=1, alpha=0.5, c='r', s=10)
+ax.scatter(lon[low_indices], lat[low_indices], zorder=1, alpha=0.5, c='g', s=10, label='acc <= 3')
+ax.scatter(lon[mid_indices], lat[mid_indices], zorder=1, alpha=0.5, c='y', s=10, label='3 < acc <= 7')
+ax.scatter(lon[high_indices], lat[high_indices], zorder=1, alpha=0.5, c='r', s=10, label='acc > 7')
 
 # set axis limits
 ax.set_xlim(map_bounds[0], map_bounds[1])
 ax.set_ylim(map_bounds[2], map_bounds[3])
+
+# enable legend
+ax.legend()
 
 # plot image
 ax.imshow(map_image, zorder=0, extent=map_bounds, aspect='equal')
