@@ -17,16 +17,15 @@ valid_lat_indices = np.where(lat != 0)
 valid_lon_indices = np.where(lon != 0)
 
 # gps coordinates for map (assigned region)
-minlon = 5.7228
-maxlon = 5.9680
-minlat = 50.9251
-maxlat = 51.0796
-
-map_bounds = (minlon, maxlon, minlat, maxlat)
+min_lon = 5.7228
+max_lon = 5.9680
+min_lat = 50.9251
+max_lat = 51.0796
+map_bounds = (min_lon, max_lon, min_lat, max_lat)
 
 # get gps values within assigned region
-lat_indices_in_region = np.where(np.logical_and(minlat < lat, lat < maxlat))
-lon_indices_in_region = np.where(np.logical_and(minlon < lon, lon < maxlon))
+lat_indices_in_region = np.where(np.logical_and(min_lat < lat, lat < max_lat))
+lon_indices_in_region = np.where(np.logical_and(min_lon < lon, lon < max_lon))
 
 # get intersections of different filters
 gps_indices_in_region = np.intersect1d(lat_indices_in_region, lon_indices_in_region)
@@ -74,6 +73,13 @@ ax.scatter(lon[high_indices], lat[high_indices], zorder=1, alpha=0.5, c='r', s=1
 # set axis limits
 ax.set_xlim(map_bounds[0], map_bounds[1])
 ax.set_ylim(map_bounds[2], map_bounds[3])
+
+# set graph title
+ax.set_title('Acceleration values in municipality Sittard-Geleen.')
+
+# set axis titles
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
 
 # enable legend
 ax.legend()
