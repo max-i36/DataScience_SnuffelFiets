@@ -65,37 +65,93 @@ print('total filter results:', len(filter_results))
 
 print('-')
 
-ErrorUnpacker.print_error_report(errors)
+# ErrorUnpacker.print_error_report(errors)
 
-# # set up dataframe for filtered data
-# filtered_data = {'time': time[filter_results],
-#                  'lat': lat[filter_results],
-#                  'lon': lon[filter_results],
-#                  }
-# filtered_data = pd.DataFrame(filtered_data)
-#
-# # read map image
-# map_image = plt.imread('map_sittard_geleen.png')
-#
-# # create plot window
-# fig, ax = plt.subplots(figsize=(8, 7))
-#
-# # set axis limits
-# ax.set_xlim(map_bounds[0], map_bounds[1])
-# ax.set_ylim(map_bounds[2], map_bounds[3])
-#
-# # set graph title
-# ax.set_title('Figure Title.')
-#
-# # set axis titles
-# ax.set_xlabel('Longitude')
-# ax.set_ylabel('Latitude')
-#
-# # enable legend
-# ax.legend()
-#
-# # plot image
-# ax.imshow(map_image, zorder=0, extent=map_bounds, aspect='equal')
-#
-# # show plot window
-# plt.show()
+# set up dataframe for filtered data
+filtered_data = {'time': time[filter_results],
+                 'lat': lat[filter_results],
+                 'lon': lon[filter_results],
+                 'pm10': particulate_10[filter_results],
+                 'pm2_5': particulate_2_5[filter_results],
+                 'pm1_0': particulate_1_0[filter_results],
+                 }
+filtered_data = pd.DataFrame(filtered_data)
+
+# get limits for quartiles
+pm10_sorted = list(filtered_data.pm10).copy()
+pm10_sorted.sort()
+pm10_lim_1 = pm10_sorted[int(len(filter_results)/4)]
+pm10_lim_2 = pm10_sorted[int(len(filter_results)/2)]
+pm10_lim_3 = pm10_sorted[int(3*len(filter_results)/4)]
+
+print('pm10 limits:', pm10_lim_1, pm10_lim_2, pm10_lim_3)
+
+pm2_5_sorted = list(filtered_data.pm2_5).copy()
+pm2_5_sorted.sort()
+pm2_5_lim_1 = pm2_5_sorted[int(len(filter_results)/4)]
+pm2_5_lim_2 = pm2_5_sorted[int(len(filter_results)/2)]
+pm2_5_lim_3 = pm2_5_sorted[int(3*len(filter_results)/4)]
+
+print('pm2_5 limits:', pm2_5_lim_1, pm2_5_lim_2, pm2_5_lim_3)
+
+pm1_0_sorted = list(filtered_data.pm1_0).copy()
+pm1_0_sorted.sort()
+pm1_0_lim_1 = pm1_0_sorted[int(len(filter_results)/4)]
+pm1_0_lim_2 = pm1_0_sorted[int(len(filter_results)/2)]
+pm1_0_lim_3 = pm1_0_sorted[int(3*len(filter_results)/4)]
+
+print('pm1_0 limits:', pm1_0_lim_1, pm1_0_lim_2, pm1_0_lim_3)
+
+# get quartile indices
+pm10 = np.array(list(filtered_data.pm10))
+pm10_q1 = np.where(pm10 <= pm10_lim_1)
+pm10_q2 = np.where(np.logical_and(pm10 > pm10_lim_1, pm10 <= pm10_lim_2))
+pm10_q3 = np.where(np.logical_and(pm10 > pm10_lim_2, pm10 <= pm10_lim_3))
+pm10_q4 = np.where(pm10 > pm10_lim_3)
+
+pm2_5 = np.array(list(filtered_data.pm2_5))
+pm2_5_q1 = np.where(pm2_5 <= pm2_5_lim_1)
+pm2_5_q2 = np.where(np.logical_and(pm2_5 > pm2_5_lim_1, pm2_5 <= pm2_5_lim_2))
+pm2_5_q3 = np.where(np.logical_and(pm2_5 > pm2_5_lim_2, pm2_5 <= pm2_5_lim_3))
+pm2_5_q4 = np.where(pm2_5 > pm2_5_lim_3)
+
+pm1_0 = np.array(list(filtered_data.pm1_0))
+pm1_0_q1 = np.where(pm1_0 <= pm1_0_lim_1)
+pm1_0_q2 = np.where(np.logical_and(pm1_0 > pm1_0_lim_1, pm1_0 <= pm1_0_lim_2))
+pm1_0_q3 = np.where(np.logical_and(pm1_0 > pm1_0_lim_2, pm1_0 <= pm1_0_lim_3))
+pm1_0_q4 = np.where(pm1_0 > pm1_0_lim_3)
+
+lon = np.array(list(filtered_data.lon))
+lat = np.array(list(filtered_data.lat))
+
+# read map image
+map_image = plt.imread('map_sittard_geleen.png')
+
+# create plot window
+fig, ax = plt.subplots(figsize=(8, 7))
+
+# create scatter plots
+ax.scatter(lon[pm2_5_q1], lat[pm2_5_q1], zorder=1, alpha=0.2, c='g', s=10, label='pm2_5 1st quartile')
+ax.scatter(lon[pm2_5_q2], lat[pm2_5_q2], zorder=1, alpha=0.2, c='y', s=10, label='pm2_5 2nd quartile')
+ax.scatter(lon[pm2_5_q3], lat[pm2_5_q3], zorder=1, alpha=0.2, c='r', s=10, label='pm2_5 3rd quartile')
+ax.scatter(lon[pm2_5_q4], lat[pm2_5_q4], zorder=1, alpha=0.2, c='k', s=10, label='pm2_5 4th quartile')
+
+# set axis limits
+ax.set_xlim(map_bounds[0], map_bounds[1])
+ax.set_ylim(map_bounds[2], map_bounds[3])
+
+# set graph title
+ax.set_title('Particulate matter in municipality Sittard-Geleen.')
+
+# set axis titles
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
+
+# enable legend
+ax.legend(loc='upper right')
+
+# plot image
+ax.imshow(map_image, zorder=0, extent=map_bounds, aspect='equal')
+
+# show plot window
+plt.show()
