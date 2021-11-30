@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
-from dateutil.parser import parse as parse_date
 import datetime
 import matplotlib.pyplot as plt
 from error_unpacker import ErrorUnpacker
+from matplotlib.widgets import Slider, Button
 
-parse_dates = False
+# parse_dates = False
+parse_dates = True
 
 # import csv data to pandas dataframe
 df = pd.read_csv('snuffelfiets_data.csv')
@@ -17,7 +18,7 @@ particulate_1_0 = np.array(list(df['pm1_0']))  # ug/M^3
 nitrous_oxide = np.array(list(df['no2']))  # ug/M^3
 volatile_organic_compounds = np.array(list(df['voc']))  # TODO: find out unit for VOC measurement
 
-airpressure = np.array(list(df['pressure']))  # hPa
+air_pressure = np.array(list(df['pressure']))  # hPa
 temperature = np.array(list(df['temperature']))  # degrees Celsius
 humidity = np.array(list(df['humidity']))  # percentage
 
@@ -28,9 +29,21 @@ errors = np.array(list(df['error_code']))
 
 if parse_dates:
     time = np.array([datetime.datetime.strptime(time_string, '%Y-%m-%d %H:%M:%S')
-                     for time_string in list(df['recording_time'])])
+                     for time_string in list(df['receive_time'])])
 else:
-    time = np.array(list(df['recording_time']))
+    time = np.array(list(df['receive_time']))
+
+# get experiment duration
+time_sorted = time.copy()
+time_sorted.sort()
+start_time = time_sorted[0]
+end_time = time_sorted[-1]
+experiment_duration = end_time - start_time
+experiment_duration = experiment_duration.days
+
+# set display interval width
+interval_width = 7
+interval_duration = datetime.timedelta(days=interval_width)
 
 # get valid gps entries (nonzero coordinates)
 valid_lat_indices = np.where(lat != 0)
@@ -80,34 +93,35 @@ filtered_data = pd.DataFrame(filtered_data)
 # get limits for quartiles
 pm10_sorted = list(filtered_data.pm10).copy()
 pm10_sorted.sort()
-pm10_lim_1 = pm10_sorted[int(len(filter_results)/4)]
-pm10_lim_2 = pm10_sorted[int(len(filter_results)/2)]
-pm10_lim_3 = pm10_sorted[int(3*len(filter_results)/4)]
+pm10_lim_1 = pm10_sorted[int(len(filter_results) / 4)]
+pm10_lim_2 = pm10_sorted[int(len(filter_results) / 2)]
+pm10_lim_3 = pm10_sorted[int(3 * len(filter_results) / 4)]
 
 print('pm10 limits:', pm10_lim_1, pm10_lim_2, pm10_lim_3)
 
 pm2_5_sorted = list(filtered_data.pm2_5).copy()
 pm2_5_sorted.sort()
-pm2_5_lim_1 = pm2_5_sorted[int(len(filter_results)/4)]
-pm2_5_lim_2 = pm2_5_sorted[int(len(filter_results)/2)]
-pm2_5_lim_3 = pm2_5_sorted[int(3*len(filter_results)/4)]
+pm2_5_lim_1 = pm2_5_sorted[int(len(filter_results) / 4)]
+pm2_5_lim_2 = pm2_5_sorted[int(len(filter_results) / 2)]
+pm2_5_lim_3 = pm2_5_sorted[int(3 * len(filter_results) / 4)]
 
 print('pm2_5 limits:', pm2_5_lim_1, pm2_5_lim_2, pm2_5_lim_3)
 
 pm1_0_sorted = list(filtered_data.pm1_0).copy()
 pm1_0_sorted.sort()
-pm1_0_lim_1 = pm1_0_sorted[int(len(filter_results)/4)]
-pm1_0_lim_2 = pm1_0_sorted[int(len(filter_results)/2)]
-pm1_0_lim_3 = pm1_0_sorted[int(3*len(filter_results)/4)]
+pm1_0_lim_1 = pm1_0_sorted[int(len(filter_results) / 4)]
+pm1_0_lim_2 = pm1_0_sorted[int(len(filter_results) / 2)]
+pm1_0_lim_3 = pm1_0_sorted[int(3 * len(filter_results) / 4)]
 
 print('pm1_0 limits:', pm1_0_lim_1, pm1_0_lim_2, pm1_0_lim_3)
 
 # get quartile indices
-pm10 = np.array(list(filtered_data.pm10))
-pm10_q1 = np.where(pm10 <= pm10_lim_1)
-pm10_q2 = np.where(np.logical_and(pm10 > pm10_lim_1, pm10 <= pm10_lim_2))
-pm10_q3 = np.where(np.logical_and(pm10 > pm10_lim_2, pm10 <= pm10_lim_3))
-pm10_q4 = np.where(pm10 > pm10_lim_3)
+# TODO: investigate runtime warnings from dividing pm10 into quartiles
+# pm10 = np.array(list(filtered_data.pm10))
+# pm10_q1 = np.where(pm10 <= pm10_lim_1)
+# pm10_q2 = np.where(np.logical_and(pm10 > pm10_lim_1, pm10 <= pm10_lim_2))
+# pm10_q3 = np.where(np.logical_and(pm10 > pm10_lim_2, pm10 <= pm10_lim_3))
+# pm10_q4 = np.where(pm10 > pm10_lim_3)
 
 pm2_5 = np.array(list(filtered_data.pm2_5))
 pm2_5_q1 = np.where(pm2_5 <= pm2_5_lim_1)
@@ -121,8 +135,12 @@ pm1_0_q2 = np.where(np.logical_and(pm1_0 > pm1_0_lim_1, pm1_0 <= pm1_0_lim_2))
 pm1_0_q3 = np.where(np.logical_and(pm1_0 > pm1_0_lim_2, pm1_0 <= pm1_0_lim_3))
 pm1_0_q4 = np.where(pm1_0 > pm1_0_lim_3)
 
+# get gps coordinates from filtered data
 lon = np.array(list(filtered_data.lon))
 lat = np.array(list(filtered_data.lat))
+
+# get initial time slice
+initial_time_slice = np.where(np.logical_and(time >= start_time, time <= start_time + interval_duration))
 
 # read map image
 map_image = plt.imread('map_sittard_geleen.png')
@@ -131,10 +149,59 @@ map_image = plt.imread('map_sittard_geleen.png')
 fig, ax = plt.subplots(figsize=(8, 7))
 
 # create scatter plots
-ax.scatter(lon[pm2_5_q1], lat[pm2_5_q1], zorder=1, alpha=0.2, c='g', s=10, label='pm2_5 1st quartile')
-ax.scatter(lon[pm2_5_q2], lat[pm2_5_q2], zorder=1, alpha=0.2, c='y', s=10, label='pm2_5 2nd quartile')
-ax.scatter(lon[pm2_5_q3], lat[pm2_5_q3], zorder=1, alpha=0.2, c='r', s=10, label='pm2_5 3rd quartile')
-ax.scatter(lon[pm2_5_q4], lat[pm2_5_q4], zorder=1, alpha=0.2, c='k', s=10, label='pm2_5 4th quartile')
+quartile_1, = plt.plot(lon[np.intersect1d(pm2_5_q1, initial_time_slice)],
+                       lat[np.intersect1d(pm2_5_q1, initial_time_slice)],
+                       zorder=1, marker='.', linestyle='', alpha=0.2, c='g', label='pm2_5 1st quartile')
+quartile_2, = plt.plot(lon[np.intersect1d(pm2_5_q2, initial_time_slice)],
+                       lat[np.intersect1d(pm2_5_q2, initial_time_slice)],
+                       zorder=1, marker='.', linestyle='', alpha=0.2, c='y', label='pm2_5 2nd quartile')
+quartile_3, = plt.plot(lon[np.intersect1d(pm2_5_q3, initial_time_slice)],
+                       lat[np.intersect1d(pm2_5_q3, initial_time_slice)],
+                       zorder=1, marker='.', linestyle='', alpha=0.2, c='r', label='pm2_5 3rd quartile')
+quartile_4, = plt.plot(lon[np.intersect1d(pm2_5_q4, initial_time_slice)],
+                       lat[np.intersect1d(pm2_5_q4, initial_time_slice)],
+                       zorder=1, marker='.', linestyle='', alpha=0.2, c='k', label='pm2_5 4th quartile')
+
+
+# Create slider to shift time window
+slider_axes = plt.axes([0.25, 0.1, 0.65, 0.03])
+time_offset_slider = Slider(
+    ax=slider_axes,
+    label='Time Offset',
+    valmin=0,
+    valmax=experiment_duration - interval_width,
+    valinit=0,
+)
+
+
+# Create save button
+button_axes = plt.axes([0.8, 0.025, 0.1, 0.04])
+save_button = Button(button_axes, 'Save', hovercolor='0.975')
+
+
+# On changed callback for slider
+def update_plot(val):
+    offset = time_offset_slider.val
+    offset_duration = datetime.timedelta(days=offset)
+    time_slice = np.where(np.logical_and(time >= start_time + offset_duration,
+                                         time <= start_time + offset_duration + interval_duration))
+    quartile_1.set_data(lon[np.intersect1d(pm2_5_q1, time_slice)], lat[np.intersect1d(pm2_5_q1, time_slice)])
+    quartile_2.set_data(lon[np.intersect1d(pm2_5_q2, time_slice)], lat[np.intersect1d(pm2_5_q2, time_slice)])
+    quartile_3.set_data(lon[np.intersect1d(pm2_5_q3, time_slice)], lat[np.intersect1d(pm2_5_q3, time_slice)])
+    quartile_4.set_data(lon[np.intersect1d(pm2_5_q4, time_slice)], lat[np.intersect1d(pm2_5_q4, time_slice)])
+    fig.canvas.draw_idle()
+
+
+# Save function for save button
+def save_plot(event):
+    # TODO: add save function
+    print('SAVING NOT YET IMPLEMENTED.')
+
+
+# register slider- and button callbacks
+time_offset_slider.on_changed(update_plot)
+save_button.on_clicked(save_plot)
+
 
 # set axis limits
 ax.set_xlim(map_bounds[0], map_bounds[1])
