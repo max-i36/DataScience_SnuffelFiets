@@ -25,6 +25,9 @@ humidity = np.array(list(df['humidity']))  # percentage
 lat = np.array(list(df['lat']))
 lon = np.array(list(df['lon']))
 
+print(df.info())
+print(df.describe()[['pm10', 'pm2_5', 'pm1_0']])
+
 errors = np.array(list(df['error_code']))
 
 if parse_dates:
@@ -78,7 +81,7 @@ print('total filter results:', len(filter_results))
 
 print('-')
 
-# ErrorUnpacker.print_error_report(errors)
+ErrorUnpacker.print_error_report(errors)
 
 # set up dataframe for filtered data
 filtered_data = {'time': time[filter_results],
