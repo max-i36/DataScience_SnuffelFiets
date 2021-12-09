@@ -9,9 +9,9 @@ class ErrorUnpacker:
 
         error_code = sum(error_codes)
 
-        filtered_indices = np.where(error_input_array & error_code == 0)
+        error_indices = np.where(error_input_array & error_code != 0)
 
-        return filtered_indices
+        return error_indices
 
     @staticmethod
     def get_error_array(error_code):
