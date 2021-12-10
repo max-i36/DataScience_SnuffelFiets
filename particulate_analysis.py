@@ -4,6 +4,9 @@ import datetime
 import matplotlib.pyplot as plt
 from error_unpacker import ErrorUnpacker
 from matplotlib.widgets import Slider, Button
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 from matplotlib import gridspec
 import math
 
@@ -64,6 +67,7 @@ interval_duration = datetime.timedelta(days=interval_width)
 invalid_sensor_indices = ErrorUnpacker.filter_out_error_codes(df.error_code, [16, 32, 128, 512, 1024, 2048, 4096])
 
 # print error report
+print('Report of sensor error codes from Sniffer Bike data:')
 ErrorUnpacker.print_error_report(df.error_code)
 
 # drop records with sensor errors
@@ -81,11 +85,54 @@ df.where(np.logical_and(min_lat < df.lat, df.lat < max_lat), inplace=True)
 df.where(np.logical_and(min_lon < df.lon, df.lon < max_lon), inplace=True)
 df.dropna(inplace=True)
 
-# output amount of entries matching filters
-print('-')
-print('total amount of records after filtering:', df.shape[0])
+# parse datetimes in snuffelfiets data
+if parse_dates:
+    df.receive_time = df.receive_time.apply(datetime.datetime.strptime, args=('%Y-%m-%d %H:%M:%S',))
 
+# output amount of entries matching filters
+print('---------------------------------------------------------')
+print('Total amount of records after filtering:', df.shape[0])
+
+# print correlation cross table for particulate matter
+print('---------------------------------------------------------')
+print('Particulate sizes correclations:')
+print(df[['pm10', 'pm2_5', 'pm1_0']].corr())
+
+# get descriptive statistics for particulate matter levels
 descriptives = df[['pm10', 'pm2_5', 'pm1_0']].describe()
+print('---------------------------------------------------------')
+print('Descriptive statistics for particulate matter:')
+print(descriptives)
+
+# get daily averages for particulate matter for use in simplified model
+df_copy = df[['receive_time', 'pm10', 'pm2_5', 'pm1_0']].copy(deep=True)
+df_copy = df_copy.resample('1D', on='receive_time').mean()
+df_copy.dropna(inplace=True)
+df_weather_copy = df_weather.copy(deep=True)
+df_weather_copy.where(df_weather_copy.timestamp.isin(df_copy.index), inplace=True)
+df_weather_copy.dropna(inplace=True)
+
+# split into training and testing data
+x_train, x_test, y_train, y_test = train_test_split(df_weather_copy[['wind_x', 'wind_y']],
+                                                    df_copy['pm2_5'],
+                                                    test_size=0.2,
+                                                    random_state=42,
+                                                    )
+
+# fit linear regression model
+reg = LinearRegression()
+reg.fit(x_train, y_train)
+
+# calculate regression accuracy measures
+r_square = reg.score(x_test, y_test)
+y_predict = reg.predict(x_test)
+rms_error = mean_squared_error(y_predict, y_test, squared=False)
+
+# print regression accuracy measures
+print('---------------------------------------------------------')
+print('Wind-Particulate regression model accuracy:')
+print('R squared value:', r_square)
+print('RMS error:', rms_error)
 
 # get quartile indices
 pm10 = np.array(list(df.pm10))
@@ -105,10 +152,6 @@ pm1_0_q1 = np.where(pm1_0 <= descriptives.pm1_0['25%'])
 pm1_0_q2 = np.where(np.logical_and(pm1_0 > descriptives.pm1_0['25%'], pm1_0 <= descriptives.pm1_0['50%']))
 pm1_0_q3 = np.where(np.logical_and(pm1_0 > descriptives.pm1_0['50%'], pm1_0 <= descriptives.pm1_0['75%']))
 pm1_0_q4 = np.where(pm1_0 > descriptives.pm1_0['75%'])
-
-# parse datetimes in snuffelfiets data
-if parse_dates:
-    df.receive_time = df.receive_time.apply(datetime.datetime.strptime, args=('%Y-%m-%d %H:%M:%S',))
 
 # get experiment duration
 start_time = df.receive_time.min()
