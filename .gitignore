@@ -1,3 +1,4 @@
 __pycache__/
 .idea/
 snuffelfiets_data.csv
+snuffelfiets_data_filtered.csv

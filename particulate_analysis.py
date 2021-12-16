@@ -7,24 +7,16 @@ from matplotlib.widgets import Slider, Button
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
 from matplotlib import gridspec
 import math
+from cylindrical_plot import CylinderPlot
 
 # parse_dates = False
 parse_dates = True
 
 # import snuffelfiets csv data to pandas dataframe
-df = pd.read_csv('snuffelfiets_data.csv')
-df.drop(['air_quality_observed_id',
-         'geom',
-         'recording_time',
-         'voc',
-         'acc_max',
-         'no2',
-         'horizontal_accuracy',
-         'vertical_accuracy',
-         ],
-        axis=1,)
+df = pd.read_csv('snuffelfiets_data_filtered.csv')
 
 # import weather data to dataframe
 df_weather = pd.read_csv('weerdata.csv')
@@ -133,6 +125,23 @@ print('---------------------------------------------------------')
 print('Wind-Particulate regression model accuracy:')
 print('R squared value:', r_square)
 print('RMS error:', rms_error)
+
+# display regression result visually using cylinder plot
+# set up input wind data to use in prediction model (mean wind speed, all directions covered)
+predict_wind_speed = np.ones(360) * df_weather.wind_speed.mean()
+predict_wind_direction = np.linspace(1, 360, 360)
+# set up dataframe
+df_predict = pd.DataFrame({'wind_speed': predict_wind_speed, 'wind_direction': predict_wind_direction})
+# vectorize wind for prediction input
+wind_vectors_predict = vector_wind(df_predict.wind_direction, df_predict.wind_speed)
+# generate prediction
+transformation_array = reg.predict(wind_vectors_predict)
+# use mean to transform prediction to relative in- and decreases
+relative_transformation_array = (transformation_array - np.mean(transformation_array))/np.mean(transformation_array)
+# create cylinder plot
+CylinderPlot.cylindrical_plot(relative_transformation_array, title='Relative particulate increase in function of wind '
+                                                                   'direction\nNOTE: wind direction in meteorological '
+                                                                   'notation.\nI.E. where wind is blowing FROM.')
 
 # get quartile indices
 pm10 = np.array(list(df.pm10))
