@@ -7,10 +7,9 @@ from matplotlib.widgets import Slider, Button
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from custom_plotting_tools import CustomPlottingTools, ConversionTools
 from sklearn.preprocessing import StandardScaler
 from matplotlib import gridspec
-import math
-from cylindrical_plot import CylinderPlot
 
 # parse_dates = False
 parse_dates = True
@@ -25,31 +24,14 @@ df_weather = df_weather[['YYYYMMDD', 'DDVEC', 'FHVEC', '   PG']]
 # rename columns to something more human-readable
 df_weather.rename(columns={'YYYYMMDD': 'timestamp', 'DDVEC': 'wind_direction', 'FHVEC': 'wind_speed', '   PG': 'air_pressure'}, inplace=True)
 
-
-# function to convert YYYYMMDD formatted integers to datetime objects
-def int_to_timestamp(integer):
-    string = str(integer)
-    return datetime.datetime.strptime(string, '%Y%m%d')
-
-
-# function to decompose wind information from meteorological degrees to vector components
-def vector_wind(wind_direction, wind_speed):
-    # convert direction to radians
-    wind_direction = wind_direction/180*math.pi
-    # get x and y components
-    wind_x = pd.DataFrame(-wind_speed.abs()*wind_direction.apply(math.sin), columns=['wind_x'])
-    wind_y = pd.DataFrame(-wind_speed.abs()*wind_direction.apply(math.cos), columns=['wind_y'])
-    return pd.concat([wind_x, wind_y], axis=1)
-
-
 # get wind vector components
-wind_vectors = vector_wind(df_weather.wind_direction, df_weather.wind_speed)
+wind_vectors = ConversionTools.vector_wind(df_weather.wind_direction, df_weather.wind_speed)
 
 # add wind vector components to weather dataframe
 df_weather = pd.concat([df_weather, wind_vectors], axis=1)
 
 # parse timestamp column using custom function
-df_weather.timestamp = df_weather.timestamp.apply(int_to_timestamp)
+df_weather.timestamp = df_weather.timestamp.apply(ConversionTools.int_to_timestamp)
 
 # set display interval width
 interval_width = 7
@@ -128,20 +110,36 @@ print('RMS error:', rms_error)
 
 # display regression result visually using cylinder plot
 # set up input wind data to use in prediction model (mean wind speed, all directions covered)
-predict_wind_speed = np.ones(360) * df_weather.wind_speed.mean()
-predict_wind_direction = np.linspace(1, 360, 360)
+predict_wind_speed = np.ones(36) * df_weather.wind_speed.mean()
+predict_wind_direction = np.linspace(10, 360, 36)
 # set up dataframe
 df_predict = pd.DataFrame({'wind_speed': predict_wind_speed, 'wind_direction': predict_wind_direction})
 # vectorize wind for prediction input
-wind_vectors_predict = vector_wind(df_predict.wind_direction, df_predict.wind_speed)
+wind_vectors_predict = ConversionTools.vector_wind(df_predict.wind_direction, df_predict.wind_speed)
 # generate prediction
 transformation_array = reg.predict(wind_vectors_predict)
 # use mean to transform prediction to relative in- and decreases
 relative_transformation_array = (transformation_array - np.mean(transformation_array))/np.mean(transformation_array)
 # create cylinder plot
-CylinderPlot.cylindrical_plot(relative_transformation_array, title='Relative particulate increase in function of wind '
-                                                                   'direction\nNOTE: wind direction in meteorological '
-                                                                   'notation.\nI.E. where wind is blowing FROM.')
+CustomPlottingTools.cylindrical_plot(relative_transformation_array,
+                                     title='Relative particulate increase in function of wind direction\nNOTE: wind '
+                                           'direction in meteorological notation.\nI.E. where wind is blowing FROM.',
+                                     theta_resolution=36,
+                                     )
+# create arrow plot (rotated 180 degrees)
+CustomPlottingTools.arrow_plot(predict_wind_direction+180,
+                               transformation_array,
+                               title='Average particulate level in function of wind direction. [mg/m^3]',
+                               convert_radians=True,
+                               )
+
+# create rose plot (rotated 180 degrees)
+CustomPlottingTools.rose_plot(predict_wind_direction+180,
+                              transformation_array,
+                              title='Average particulate level in function of wind direction. [mg/m^3]',
+                              convert_radians=True,
+                              cm='rainbow'
+                              )
 
 # get quartile indices
 pm10 = np.array(list(df.pm10))
@@ -179,7 +177,9 @@ wind_y = np.array(list(df_weather.wind_y))
 
 # get initial time slice
 initial_time_slice = np.where(np.logical_and(time >= start_time, time <= start_time + interval_duration))
-initial_time_slice_weather = np.where(np.logical_and(time_weather >= start_time, time_weather <= start_time + interval_duration))
+initial_time_slice_weather = np.where(np.logical_and(time_weather >= start_time,
+                                                     time_weather <= start_time + interval_duration,
+                                                     ))
 
 # read map image
 map_image = plt.imread('map_sittard_geleen.png')
@@ -209,16 +209,10 @@ quartile_4, = ax1.plot(lon[np.intersect1d(pm2_5_q4, initial_time_slice)],
                        zorder=1, marker='.', linestyle='', alpha=0.2, c='k', label='pm2_5 4th quartile')
 
 
-# helper function to convert cartesian vector coordinates to polar
-def cart2pol(x, y):
-    radius = np.hypot(x, y)
-    theta = np.arctan2(y, x)
-    return theta, radius
-
-
 # convert wind data to polar coordinates
-angles, radii = cart2pol(wind_x[initial_time_slice_weather],
-                         wind_y[initial_time_slice_weather])
+angles, radii = ConversionTools.cart2pol(wind_x[initial_time_slice_weather],
+                                             wind_y[initial_time_slice_weather],
+                                             )
 # annotation list to keep track of annotations on wind graph
 annotations = []
 # set polar plot border to maximum plot value
@@ -269,8 +263,9 @@ def update_plot(val):
     annotations.clear()
 
     # convert selected slice of vector wind data to polar coordinates
-    angles, radii = cart2pol(wind_x[time_slice_weather],
-                             wind_y[time_slice_weather])
+    angles, radii = ConversionTools.cart2pol(wind_x[time_slice_weather],
+                                             wind_y[time_slice_weather],
+                                             )
     # set border for polar plot to maximum plot value
     ax2.set_ylim(0, np.max(radii)/10)
 
