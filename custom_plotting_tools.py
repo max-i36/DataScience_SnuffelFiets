@@ -70,13 +70,12 @@ class CustomPlottingTools:
         return
 
     @staticmethod
-    def arrow_plot(angles, radii, title=None, convert_radians=True):
+    def arrow_plot(angles, radii, title=None):
         # create figure
         fig = plt.figure()
 
-        # convert degrees to radians
-        if convert_radians:
-            angles = ConversionTools.deg2rad(angles)
+        xy = ConversionTools.vector_wind(pd.Series(angles), pd.Series(radii))
+        angles, radii = ConversionTools.cart2pol(xy.wind_x, xy.wind_y)
 
         # create axes
         ax = plt.subplot(projection='polar')
@@ -98,13 +97,14 @@ class CustomPlottingTools:
         return
 
     @staticmethod
-    def rose_plot(angles, radii, title=None, convert_radians=True, cm=None):
+    def rose_plot(angles, radii, title=None, cm=None):
         # create figure
         fig = plt.figure()
 
-        # convert degrees to radians
-        if convert_radians:
-            angles = ConversionTools.deg2rad(angles)
+        xy = ConversionTools.vector_wind(pd.Series(angles), pd.Series(radii))
+        angles, radii = ConversionTools.cart2pol(xy.wind_x, xy.wind_y)
+
+        angles = angles + math.pi
 
         # create axes
         ax = plt.subplot(projection='polar')

@@ -141,11 +141,10 @@ print('Wind-Particulate neural net regression model accuracy:')
 print('R squared value (neural):', r_square_neural)
 print('RMS error (neural):', rms_error_neural)
 
-# display regression result visually using cylinder plot
-
+# # display regression results visually # #
 # set up input wind data to use in prediction model (mean wind speed, all directions covered)
-predict_wind_speed = np.ones(36) * df_weather.wind_speed.mean()
-predict_wind_direction = np.linspace(10, 360, 36)
+predict_wind_speed = np.ones(72) * df_weather.wind_speed.mean()
+predict_wind_direction = np.linspace(5, 360, 72)
 # set up dataframe
 df_predict = pd.DataFrame({'wind_speed': predict_wind_speed, 'wind_direction': predict_wind_direction})
 # vectorize wind for prediction input
@@ -165,15 +164,15 @@ CustomPlottingTools.cylindrical_plot(relative_transformation_array,
                                      title='Relative particulate increase in function of wind direction\nNOTE: wind '
                                            'direction in meteorological notation.\nI.E. where wind is blowing FROM. '
                                            '(linear)',
-                                     theta_resolution=36,
+                                     theta_resolution=72,
                                      )
 
 # create cylinder plot (neural net)
-CustomPlottingTools.cylindrical_plot(relative_transformation_array_neural,
+CustomPlottingTools.cylindrical_plot(transformation_array_neural,
                                      title='Relative particulate increase in function of wind direction\nNOTE: wind '
                                            'direction in meteorological notation.\nI.E. where wind is blowing FROM. '
                                            '(neural)',
-                                     theta_resolution=36,
+                                     theta_resolution=72,
                                      )
 
 # create rose plot (linear)
@@ -181,7 +180,6 @@ CustomPlottingTools.rose_plot(predict_wind_direction,
                               transformation_array,
                               title='Average particulate level in function of wind direction (linear prediction). '
                                     '[mg/m^3]',
-                              convert_radians=True,
                               cm='rainbow'
                               )
 
@@ -190,7 +188,6 @@ CustomPlottingTools.rose_plot(predict_wind_direction,
                               transformation_array_neural,
                               title='Average particulate level in function of wind direction (neural net prediction). '
                                     '[mg/m^3]',
-                              convert_radians=True,
                               cm='rainbow'
                               )
 
