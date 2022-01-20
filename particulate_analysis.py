@@ -19,6 +19,8 @@ from matplotlib import gridspec
 # parse_dates = False
 parse_dates = True
 
+random_state = 42
+
 # import snuffelfiets csv data to pandas dataframe
 df = pd.read_csv('snuffelfiets_data_filtered.csv')
 
@@ -101,33 +103,37 @@ df_weather_copy = df_weather.copy(deep=True)
 df_weather_copy.where(df_weather_copy.timestamp.isin(df_copy.index), inplace=True)
 df_weather_copy.dropna(inplace=True)
 
-# split into training and testing data for multiple linear regression
+# split into training and testing data for regression models
 x_train, x_test, y_train, y_test = train_test_split(df_weather_copy[['wind_x', 'wind_y']],
                                                     df_copy['pm2_5'],
                                                     test_size=0.2,
-                                                    random_state=42,
+                                                    random_state=random_state,
                                                     )
 
 # fit linear regression model
+# NOTE: linear regression is only able to output a simple gradient for particulate matter
+# this simplified model may obscure more detailed data in the case of multiple sources of particulate matter
 reg = LinearRegression()
 reg.fit(x_train, y_train)
 
 # fit neural network regression model
-neural_net_wind = MLPRegressor(max_iter=200,
-                               solver='sgd',
+# NOTE: since the neural network is not a linear regressor, it may determine that there are multiple discrete
+# sources of particulate matter outside of the analyzed municipality
+neural_net_wind = MLPRegressor(max_iter=5000,
+                               solver='adam',
                                activation='logistic',
-                               learning_rate_init=0.01,
+                               learning_rate_init=0.005,
                                early_stopping=False,
-                               random_state=42,
+                               random_state=random_state,
                                )
 neural_net_wind.fit(x_train, y_train)
 
 # calculate regression accuracy measures
-# linear
+# linear regressor
 y_predict = reg.predict(x_test)
 r_square = r2_score(y_test, y_predict)
 rms_error = mean_squared_error(y_predict, y_test, squared=False)
-# neural net
+# neural net regressor
 y_predict_neural = neural_net_wind.predict(x_test)
 r_square_neural = r2_score(y_test, y_predict_neural)
 rms_error_neural = mean_squared_error(y_predict_neural, y_test, squared=False)
@@ -192,18 +198,21 @@ CustomPlottingTools.rose_plot(predict_wind_direction,
                               )
 
 # get quartile indices
+# <10 micron particulate
 pm10 = np.array(list(df.pm10))
 pm10_q1 = np.where(pm10 <= descriptives.pm10['25%'])
 pm10_q2 = np.where(np.logical_and(pm10 > descriptives.pm10['25%'], pm10 <= descriptives.pm10['50%']))
 pm10_q3 = np.where(np.logical_and(pm10 > descriptives.pm10['50%'], pm10 <= descriptives.pm10['75%']))
 pm10_q4 = np.where(pm10 > descriptives.pm10['75%'])
 
+# <2.5 micron particulate
 pm2_5 = np.array(list(df.pm2_5))
 pm2_5_q1 = np.where(pm2_5 <= descriptives.pm2_5['25%'])
 pm2_5_q2 = np.where(np.logical_and(pm2_5 > descriptives.pm2_5['25%'], pm2_5 <= descriptives.pm2_5['50%']))
 pm2_5_q3 = np.where(np.logical_and(pm2_5 > descriptives.pm2_5['50%'], pm2_5 <= descriptives.pm2_5['75%']))
 pm2_5_q4 = np.where(pm2_5 > descriptives.pm2_5['75%'])
 
+# <1 micron particulate
 pm1_0 = np.array(list(df.pm1_0))
 pm1_0_q1 = np.where(pm1_0 <= descriptives.pm1_0['25%'])
 pm1_0_q2 = np.where(np.logical_and(pm1_0 > descriptives.pm1_0['25%'], pm1_0 <= descriptives.pm1_0['50%']))
@@ -220,7 +229,6 @@ experiment_duration = experiment_duration.days
 time = np.array(list(df.receive_time))
 lon = np.array(list(df.lon))
 lat = np.array(list(df.lat))
-
 time_weather = np.array(list(df_weather.timestamp))
 wind_x = np.array(list(df_weather.wind_x))
 wind_y = np.array(list(df_weather.wind_y))
@@ -236,7 +244,7 @@ wind_dict = {}
 for date, wind_x_val, wind_y_val in zip(list(df_weather.timestamp), list(df_weather.wind_x), list(df_weather.wind_y)):
     wind_dict[date.date()] = (wind_x_val, wind_y_val)
 
-# set up column vector of pm2_5 quartiles
+# set up column vector of pm2_5 quartiles for classification model
 pm2_5_quartiles = np.ones(len(df.index))
 pm2_5_quartiles[pm2_5_q2] *= 2
 pm2_5_quartiles[pm2_5_q3] *= 3
@@ -254,14 +262,13 @@ for i in range(0, len(times)):
 df['wind_x'] = wind_x_vector
 df['wind_y'] = wind_y_vector
 df['pm2_5_quartiles'] = pm2_5_quartiles
-
 df['pm2_5_quartiles'] = LabelEncoder().fit_transform(df['pm2_5_quartiles'])
 
-# split training and test data for neural net
+# split training and test data for neural net classifier
 x_train, x_test, y_train, y_test = train_test_split(df[['wind_x', 'wind_y', 'lon', 'lat']],
                                                     df['pm2_5_quartiles'],
                                                     test_size=0.1,
-                                                    random_state=36,
+                                                    random_state=random_state,
                                                     )
 # # fit neural network classifier model
 neural_net = MLPClassifier(max_iter=200,

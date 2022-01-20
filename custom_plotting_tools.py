@@ -74,8 +74,14 @@ class CustomPlottingTools:
         # create figure
         fig = plt.figure()
 
+        # convert meteorological wind data to standard cartesian form of wind direction
         xy = ConversionTools.vector_wind(pd.Series(angles), pd.Series(radii))
+
+        # transform cartesian data back to polar coordinates
         angles, radii = ConversionTools.cart2pol(xy.wind_x, xy.wind_y)
+
+        # NOTE: polar coordinates in this plot are NOT offset by 180 degrees, therefore the arrows on the plot indicate
+        # the direction the wind is blowing TOWARDS!
 
         # create axes
         ax = plt.subplot(projection='polar')
@@ -101,9 +107,13 @@ class CustomPlottingTools:
         # create figure
         fig = plt.figure()
 
+        # convert meteorological wind data to standard cartesian form of wind direction
         xy = ConversionTools.vector_wind(pd.Series(angles), pd.Series(radii))
+
+        # transform cartesian data back to polar coordinates
         angles, radii = ConversionTools.cart2pol(xy.wind_x, xy.wind_y)
 
+        # shift coordinates 180 degrees to indicate where the wind is blowing FROM
         angles = angles + math.pi
 
         # create axes
@@ -133,15 +143,3 @@ class CustomPlottingTools:
         # draw graph
         plt.show()
         return
-
-
-# # predict_wind_direction = np.linspace(10, 360, 36)
-# predict_wind_direction = np.linspace(45, 360, 8)
-# transformation_array = predict_wind_direction/360
-# # transformation_array = predict_wind_direction
-# # transformation_array = np.ones(36)
-# # transformation_array = np.ones(8)
-#
-# # ArrowPlot.arrow_plot(predict_wind_direction, transformation_array, convert_radians=True)
-#
-# ArrowPlot.rose_plot(predict_wind_direction, transformation_array, cm='rainbow')
